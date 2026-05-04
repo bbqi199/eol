@@ -5842,35 +5842,35 @@ const B2_IMG_MAP = {
         if(overlay) overlay.style.display = 'none';
         if(homeBody) homeBody.style.display = '';
         
-        // 渲染该商品所属的分类列表
-        renderGoodsPanel('home-body', state.searchGoodCatId);
+        // 直接渲染该分类下的所有商品（不使用分页）
+        _pageList = GOODS_DATA.filter(g=>g.catId===state.searchGoodCatId);
+        _pageElId = 'home-body';
         
-        // 查找目标商品在列表中的索引
-        const targetIndex = _pageList.findIndex(g => String(g.id) === String(state.currentGood.id));
+        // 创建网格容器
+        homeBody.innerHTML = '<div class="goods-grid" id="home-body-grid"></div>';
+        const grid = document.getElementById('home-body-grid');
         
-        if(targetIndex >= 0){
-          // 计算需要加载多少页才能看到目标商品
-          const additionalPagesNeeded = Math.floor(targetIndex / PAGE_SIZE);
-          
-          // 加载额外的分页内容
-          for(let i = 0; i < additionalPagesNeeded; i++){
-            _appendGoodsPage('home-body');
-          }
-        }
+        // 渲染所有商品
+        grid.innerHTML = _pageList.map(g=>`
+          <div class="goods-card" data-gid="${g.id}" onclick="App.openDetail('${g.id}')">
+            ${goodsImgHtml(g,'goods-img')}
+            <div class="goods-info">
+              <div class="goods-name">${g.name}</div>
+              <div class="goods-id">Codice: ${g.id}</div>
+              <div class="goods-bottom">
+                <div class="goods-price">${formatPrice(g.price)}${g.spec ? ' <span style="font-size:11px;color:var(--text-3);">'+g.spec+'</span>' : ''}</div>
+              </div>
+            </div>
+          </div>
+        `).join('');
         
-        // 轮询检查元素是否出现在DOM中，然后滚动到它
-        const pollForElement = (attempts = 0) => {
+        // 滚动到目标商品
+        setTimeout(() => {
           const goodElement = document.querySelector(`[data-gid="${state.currentGood.id}"]`);
           if(goodElement){
             goodElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          } else if(attempts < 20){
-            // 最多尝试20次（2秒）
-            setTimeout(() => pollForElement(attempts + 1), 100);
           }
-        };
-        
-        // 开始轮询
-        setTimeout(pollForElement, 100);
+        }, 100);
         
         state.fromSearch = false;
       }
