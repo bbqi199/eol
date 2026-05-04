@@ -5842,53 +5842,13 @@ const B2_IMG_MAP = {
         if(overlay) overlay.style.display = 'none';
         if(homeBody) homeBody.style.display = '';
         
-        // 直接渲染该分类下的所有商品（不使用分页）
-        _pageList = GOODS_DATA.filter(g=>g.catId===state.searchGoodCatId);
-        _pageElId = 'home-body';
-        
-        // 创建网格容器
-        homeBody.innerHTML = '<div class="goods-grid" id="home-body-grid"></div>';
-        const grid = document.getElementById('home-body-grid');
-        
-        // 渲染所有商品，并为每个商品添加ID
-        grid.innerHTML = _pageList.map(g=>`
-          <div class="goods-card" id="goods-card-${g.id}" onclick="App.openDetail('${g.id}')">
-            ${goodsImgHtml(g,'goods-img')}
-            <div class="goods-info">
-              <div class="goods-name">${g.name}</div>
-              <div class="goods-id">Codice: ${g.id}</div>
-              <div class="goods-bottom">
-                <div class="goods-price">${formatPrice(g.price)}${g.spec ? ' <span style="font-size:11px;color:var(--text-3);">'+g.spec+'</span>' : ''}</div>
-              </div>
-            </div>
-          </div>
-        `).join('');
-        
-        // 滚动到目标商品（使用 MutationObserver 等待元素出现）
-        const scrollToGood = () => {
-          const goodElement = document.getElementById(`goods-card-${state.currentGood.id}`);
-          if(goodElement){
-            goodElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            return true;
-          }
-          return false;
-        };
-        
-        // 如果元素已经存在，直接滚动
-        if(!scrollToGood()){
-          // 否则使用 MutationObserver 等待元素出现
-          const observer = new MutationObserver(() => {
-            if(scrollToGood()){
-              observer.disconnect();
-            }
-          });
-          observer.observe(grid, { childList: true, subtree: true });
-          
-          // 10秒后停止观察
-          setTimeout(() => observer.disconnect(), 10000);
-        }
-        
-        state.fromSearch = false;
+            alert('开始测试：searchGoodCatId=' + state.searchGoodCatId + ', currentGood.id=' + state.currentGood.id);
+            
+            // 方法1：先测试直接设置scrollTop是否工作
+            setTimeout(() => {
+              homeBody.scrollTop = 300;
+              alert('测试1：设置scrollTop=300，实际值=' + homeBody.scrollTop);
+            }, 100);
       }
     }
   }
