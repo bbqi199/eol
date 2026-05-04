@@ -5835,48 +5835,30 @@ const B2_IMG_MAP = {
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       $(prev).classList.add('active');
       
-      // 从搜索结果后退时，跳转到该商品在商品列表中的位置
-      if(prev === 'page-home' && state.searchGoodCatId && state.currentGood){
+      // 从搜索结果后退时，恢复搜索覆盖层
+      if(prev === 'page-home' && state.fromSearch){
         const overlay = $('search-overlay');
         const homeBody = $('home-body');
-        if(overlay) overlay.style.display = 'none';
-        if(homeBody) homeBody.style.display = '';
+        const searchInput = $('search-input');
         
-        // 1. 切换到该商品所属的分类
-        switchCat(state.searchGoodCatId);
+        // 1. 恢复搜索关键词到输入框
+        if(searchInput && state.searchKeyword) {
+          searchInput.value = state.searchKeyword;
+        }
         
-        // 2. 找到目标商品在列表中的索引
-        const targetGoodId = String(state.currentGood.id);
-        const targetIndex = _pageList.findIndex(g => String(g.id) === targetGoodId);
+        // 2. 重新生成搜索结果（这会自动显示overlay并隐藏homeBody）
+        if(state.searchKeyword) {
+          renderSearchResults(state.searchKeyword);
+        }
         
-        if(targetIndex >= 0){
-          // 3. 如果目标商品还未加载，一次性加载到目标位置（多加载10个，确保目标商品不在底部）
-          if(_pageOffset <= targetIndex){
-            _appendGoodsPage(_pageElId, targetIndex + 10);
-          }
-          
-          // 4. 等待DOM更新后，滚动到目标商品
+        // 3. 等待DOM更新后，恢复滚动位置
+        if(overlay && state.searchScrollTop > 0) {
           setTimeout(() => {
-            const targetCard = document.querySelector('[data-gid="' + targetGoodId + '"]');
-            if(targetCard){
-              targetCard.scrollIntoView({behavior: 'smooth', block: 'center'});
-              // 高亮显示目标商品
-              targetCard.style.boxShadow = '0 0 0 3px var(--primary)';
-              setTimeout(() => {
-                targetCard.style.boxShadow = '';
-              }, 2000);
-            } else {
-              console.error('Target card not found:', targetGoodId);
-              console.log('Current _pageOffset:', _pageOffset);
-              console.log('Target index:', targetIndex);
-            }
-          }, 100);
-        } else {
-          console.error('Target good not found in _pageList:', targetGoodId);
+            overlay.scrollTop = state.searchScrollTop;
+          }, 50);
         }
         
         // 重置搜索状态
-        state.searchGoodCatId = 0;
         state.fromSearch = false;
       }
     }
