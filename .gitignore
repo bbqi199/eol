@@ -1,0 +1,12 @@
+.git-old
+.git
+images
+images2
+_workbuddy/
+_archive_cleanup_20260401/
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+.DS_Store
