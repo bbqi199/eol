@@ -5850,18 +5850,14 @@ const B2_IMG_MAP = {
         const targetIndex = _pageList.findIndex(g => String(g.id) === targetGoodId);
         
         if(targetIndex >= 0){
-          // 3. 如果目标商品还未加载，先加载足够多的商品
+          // 3. 如果目标商品还未加载，一次性加载到目标位置（多加载10个，确保目标商品不在底部）
           if(_pageOffset <= targetIndex){
-            // 加载足够多的分页，确保目标商品在DOM中
-            const grid = $(_pageElId + '-grid');
-            while(_pageOffset <= targetIndex){
-              _appendGoodsPage(_pageElId);
-            }
+            _appendGoodsPage(_pageElId, targetIndex + 10);
           }
           
           // 4. 等待DOM更新后，滚动到目标商品
           setTimeout(() => {
-            const targetCard = document.querySelector(`[data-gid="${targetGoodId}"]`);
+            const targetCard = document.querySelector('[data-gid="' + targetGoodId + '"]');
             if(targetCard){
               targetCard.scrollIntoView({behavior: 'smooth', block: 'center'});
               // 高亮显示目标商品
@@ -5869,8 +5865,14 @@ const B2_IMG_MAP = {
               setTimeout(() => {
                 targetCard.style.boxShadow = '';
               }, 2000);
+            } else {
+              console.error('Target card not found:', targetGoodId);
+              console.log('Current _pageOffset:', _pageOffset);
+              console.log('Target index:', targetIndex);
             }
           }, 100);
+        } else {
+          console.error('Target good not found in _pageList:', targetGoodId);
         }
         
         // 重置搜索状态
@@ -5924,11 +5926,17 @@ const B2_IMG_MAP = {
       _pageObserver.observe(sentinel);
     }
   }
-  function _appendGoodsPage(elId){
+  function _appendGoodsPage(elId, targetOffset){
     if(_pageOffset >= _pageList.length) return;
     const grid = document.getElementById(elId+'-grid');
     if(!grid) return;
-    const slice = _pageList.slice(_pageOffset, _pageOffset + PAGE_SIZE);
+    
+    // 如果指定了 targetOffset，则加载到该位置
+    const end = targetOffset ? Math.min(_pageList.length, targetOffset) : (_pageOffset + PAGE_SIZE);
+    const slice = _pageList.slice(_pageOffset, end);
+    
+    if(slice.length === 0) return;
+    
     grid.insertAdjacentHTML('beforeend', slice.map(g=>`
       <div class="goods-card" data-gid="${g.id}" onclick="App.openDetail('${g.id}')">
         ${goodsImgHtml(g,'goods-img')}
@@ -5942,6 +5950,7 @@ const B2_IMG_MAP = {
         </div>
       </div>`).join(''));
     _pageOffset += slice.length;
+    
     // 已加载完，移除哨兵
     if(_pageOffset >= _pageList.length && _pageObserver){
       _pageObserver.disconnect(); _pageObserver=null;
