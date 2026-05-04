@@ -5835,20 +5835,47 @@ const B2_IMG_MAP = {
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       $(prev).classList.add('active');
       
-      // 跳转到该商品在商品列表中的位置
-      if(prev === 'page-home' && state.searchGoodCatId){
+      // 从搜索结果后退时，跳转到该商品在商品列表中的位置
+      if(prev === 'page-home' && state.searchGoodCatId && state.currentGood){
         const overlay = $('search-overlay');
         const homeBody = $('home-body');
         if(overlay) overlay.style.display = 'none';
         if(homeBody) homeBody.style.display = '';
         
-            alert('开始测试：searchGoodCatId=' + state.searchGoodCatId + ', currentGood.id=' + state.currentGood.id);
-            
-            // 方法1：先测试直接设置scrollTop是否工作
-            setTimeout(() => {
-              homeBody.scrollTop = 300;
-              alert('测试1：设置scrollTop=300，实际值=' + homeBody.scrollTop);
-            }, 100);
+        // 1. 切换到该商品所属的分类
+        switchCat(state.searchGoodCatId);
+        
+        // 2. 找到目标商品在列表中的索引
+        const targetGoodId = String(state.currentGood.id);
+        const targetIndex = _pageList.findIndex(g => String(g.id) === targetGoodId);
+        
+        if(targetIndex >= 0){
+          // 3. 如果目标商品还未加载，先加载足够多的商品
+          if(_pageOffset <= targetIndex){
+            // 加载足够多的分页，确保目标商品在DOM中
+            const grid = $(_pageElId + '-grid');
+            while(_pageOffset <= targetIndex){
+              _appendGoodsPage(_pageElId);
+            }
+          }
+          
+          // 4. 等待DOM更新后，滚动到目标商品
+          setTimeout(() => {
+            const targetCard = document.querySelector(`[data-gid="${targetGoodId}"]`);
+            if(targetCard){
+              targetCard.scrollIntoView({behavior: 'smooth', block: 'center'});
+              // 高亮显示目标商品
+              targetCard.style.boxShadow = '0 0 0 3px var(--primary)';
+              setTimeout(() => {
+                targetCard.style.boxShadow = '';
+              }, 2000);
+            }
+          }, 100);
+        }
+        
+        // 重置搜索状态
+        state.searchGoodCatId = 0;
+        state.fromSearch = false;
       }
     }
   }
