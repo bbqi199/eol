@@ -5844,13 +5844,33 @@ const B2_IMG_MAP = {
         
         // 渲染该商品所属的分类列表
         renderGoodsPanel('home-body', state.searchGoodCatId);
-        // 等待渲染完成后，滚动到该商品的位置
-        setTimeout(() => {
+        
+        // 查找目标商品在列表中的索引
+        const targetIndex = _pageList.findIndex(g => String(g.id) === String(state.currentGood.id));
+        
+        if(targetIndex >= 0){
+          // 计算需要加载多少页才能看到目标商品
+          const additionalPagesNeeded = Math.floor(targetIndex / PAGE_SIZE);
+          
+          // 加载额外的分页内容
+          for(let i = 0; i < additionalPagesNeeded; i++){
+            _appendGoodsPage('home-body');
+          }
+        }
+        
+        // 轮询检查元素是否出现在DOM中，然后滚动到它
+        const pollForElement = (attempts = 0) => {
           const goodElement = document.querySelector(`[data-gid="${state.currentGood.id}"]`);
           if(goodElement){
             goodElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else if(attempts < 20){
+            // 最多尝试20次（2秒）
+            setTimeout(() => pollForElement(attempts + 1), 100);
           }
-        }, 100);
+        };
+        
+        // 开始轮询
+        setTimeout(pollForElement, 100);
         
         state.fromSearch = false;
       }
