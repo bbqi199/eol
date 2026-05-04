@@ -1000,6 +1000,11 @@ const App = (function(){
     profile: { name:'', phone:'' },
     orderTabIdx: 0,
     editAddrIdx: -1,
+    // 搜索状态（用于后退时恢复）
+    searchKeyword: '',      // 搜索关键词
+    searchScrollTop: 0,    // 搜索结果滚动位置
+    searchGoodCatId: 0,    // 从搜索结果进入时，该商品的分类ID
+    fromSearch: false,     // 是否从搜索结果进入详情页
   };
 
   // ---------- 持久化 ----------
@@ -5829,6 +5834,26 @@ const B2_IMG_MAP = {
       state.currentPage = prev;
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       $(prev).classList.add('active');
+      
+      // 跳转到该商品在商品列表中的位置
+      if(prev === 'page-home' && state.searchGoodCatId){
+        const overlay = $('search-overlay');
+        const homeBody = $('home-body');
+        if(overlay) overlay.style.display = 'none';
+        if(homeBody) homeBody.style.display = '';
+        
+        // 渲染该商品所属的分类列表
+        renderGoodsPanel('home-body', state.searchGoodCatId);
+        // 等待渲染完成后，滚动到该商品的位置
+        setTimeout(() => {
+          const goodElement = document.querySelector(`[data-gid="${state.currentGood.id}"]`);
+          if(goodElement){
+            goodElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+        
+        state.fromSearch = false;
+      }
     }
   }
   // 监听手机系统后退键（Android / 浏览器后退按钮）
@@ -5927,6 +5952,19 @@ const B2_IMG_MAP = {
     state.currentGood = g;
     state.currentSpec = g.specs[0];
     state.currentQty = 1;
+    
+    // 检查是否从搜索结果进入
+    const overlay = $('search-overlay');
+    if(overlay && overlay.style.display !== 'none'){
+      state.fromSearch = true;
+      state.searchGoodCatId = g.catId;  // 保存商品的分类ID
+      state.searchKeyword = $('search-input') ? $('search-input').value : '';
+      state.searchScrollTop = overlay.scrollTop;
+    } else {
+      state.fromSearch = false;
+      state.searchGoodCatId = 0;  // 重置分类ID
+    }
+    
     renderDetail();
     showPage('page-detail');
   }
