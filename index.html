@@ -5850,9 +5850,9 @@ const B2_IMG_MAP = {
         homeBody.innerHTML = '<div class="goods-grid" id="home-body-grid"></div>';
         const grid = document.getElementById('home-body-grid');
         
-        // 渲染所有商品
+        // 渲染所有商品，并为每个商品添加ID
         grid.innerHTML = _pageList.map(g=>`
-          <div class="goods-card" data-gid="${g.id}" onclick="App.openDetail('${g.id}')">
+          <div class="goods-card" id="goods-card-${g.id}" onclick="App.openDetail('${g.id}')">
             ${goodsImgHtml(g,'goods-img')}
             <div class="goods-info">
               <div class="goods-name">${g.name}</div>
@@ -5864,13 +5864,29 @@ const B2_IMG_MAP = {
           </div>
         `).join('');
         
-        // 滚动到目标商品
-        setTimeout(() => {
-          const goodElement = document.querySelector(`[data-gid="${state.currentGood.id}"]`);
+        // 滚动到目标商品（使用 MutationObserver 等待元素出现）
+        const scrollToGood = () => {
+          const goodElement = document.getElementById(`goods-card-${state.currentGood.id}`);
           if(goodElement){
             goodElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return true;
           }
-        }, 100);
+          return false;
+        };
+        
+        // 如果元素已经存在，直接滚动
+        if(!scrollToGood()){
+          // 否则使用 MutationObserver 等待元素出现
+          const observer = new MutationObserver(() => {
+            if(scrollToGood()){
+              observer.disconnect();
+            }
+          });
+          observer.observe(grid, { childList: true, subtree: true });
+          
+          // 10秒后停止观察
+          setTimeout(() => observer.disconnect(), 10000);
+        }
         
         state.fromSearch = false;
       }
