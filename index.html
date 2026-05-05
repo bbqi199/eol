@@ -5830,79 +5830,56 @@ const B2_IMG_MAP = {
     }
   }
   function goBack(){
-    console.log('[goBack] pageStack:', JSON.stringify(state.pageStack));
     const prev = state.pageStack.pop();
-    console.log('[goBack] prev:', prev);
-    if(!prev){
-      console.warn('[goBack] pageStack 为空，强制回到首页');
-      showPage('page-home');
-      return;
-    }
+    if(!prev){ showPage('page-home'); return; }
+
     state.currentPage = prev;
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     $(prev).classList.add('active');
 
-    // 从搜索结果后退时，跳转到该商品在商品列表中的位置
+    // 从搜索结果后退：用 index 直接算位置，不找 DOM
     if(prev === 'page-home' && state.searchGoodCatId && state.currentGood){
-      console.log('[goBack] 搜索后退，searchGoodCatId:', state.searchGoodCatId, 'targetIndex:', state.targetIndex);
       const overlay = $('search-overlay');
       const homeBody = $('home-body');
       if(overlay) overlay.style.display = 'none';
       if(homeBody) homeBody.style.display = '';
 
-      // 读取目标索引
-      const targetIndex = state.targetIndex >= 0 ? state.targetIndex : parseInt(sessionStorage.getItem('targetIndex') || '-1');
-      console.log('[goBack] targetIndex:', targetIndex);
+      const targetIndex = state.targetIndex >= 0
+        ? state.targetIndex
+        : parseInt(sessionStorage.getItem('targetIndex') || '-1');
 
       if(targetIndex >= 0){
-        // 标记：阻止 switchCat 里的 scrollIntoView
+        // 1. 切换分类（会加载前50个商品）
         window._fromSearchBack = true;
-        // 切换到该商品所属的分类
         switchCat(state.searchGoodCatId);
         window._fromSearchBack = false;
 
-        // 如果目标商品还未加载，一次性加载到目标位置
+        // 2. 如果目标商品未加载，追加加载到目标位置
         if(_pageOffset <= targetIndex){
           _appendGoodsPage(_pageElId, targetIndex + 1);
         }
 
-        // 等两帧，确保 DOM 已渲染，再计算滚动位置
+        // 3. 用固定估算高度算 scrollTop，完全不读 DOM
+        //    2列布局：每行2个商品，估算每行高度 ≈ 310px
+        const FIXED_ROW_HEIGHT = 310;
+        const row = Math.floor(targetIndex / 2);
+        const scrollTop = row * FIXED_ROW_HEIGHT;
+
+        // 4. 等两帧确保 DOM 已渲染，再设置 scrollTop
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            const grid = document.getElementById(_pageElId + '-grid');
             const scrollContainer = $(_pageElId);
-            if(!grid || !scrollContainer){
-              console.warn('[goBack] 找不到 grid 或 scrollContainer');
-              return;
+            if(scrollContainer){
+              scrollContainer.scrollTop = scrollTop;
             }
-
-            const firstCard = grid.querySelector('.goods-card');
-            if(!firstCard){
-              console.warn('[goBack] 找不到 .goods-card');
-              return;
-            }
-
-            const cardHeight = firstCard.offsetHeight;
-            const gap = 8;
-            const rowHeight = cardHeight + gap;
-            const row = Math.floor(targetIndex / 2); // 2列布局
-            const scrollTop = row * rowHeight;
-
-            console.log('[goBack] 滚动：cardHeight='+cardHeight+', row='+row+', scrollTop='+scrollTop);
-
-            scrollContainer.scrollTop = scrollTop;
-
-            // 高亮目标商品
-            const targetCard = grid.querySelector('[data-gid="'+state.currentGood.id+'"]');
-            if(targetCard){
-              targetCard.style.boxShadow = '0 0 0 3px var(--primary)';
-              setTimeout(()=>{ targetCard.style.boxShadow = ''; }, 2000);
-            }
+            // 同时把 homeBody 滚到商品区域可见
+            const catGoods = $('cat-goods-container');
+            if(catGoods) catGoods.scrollIntoView();
           });
         });
       }
 
-      // 重置搜索状态
+      // 重置状态
       state.searchGoodCatId = 0;
       state.fromSearch = false;
       state.targetIndex = -1;
