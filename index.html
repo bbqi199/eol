@@ -5835,49 +5835,58 @@ const B2_IMG_MAP = {
       state.currentPage = prev;
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       $(prev).classList.add('active');
-      
+
       // 从搜索结果后退时，跳转到该商品在商品列表中的位置
       if(prev === 'page-home' && state.searchGoodCatId && state.currentGood){
         const overlay = $('search-overlay');
         const homeBody = $('home-body');
         if(overlay) overlay.style.display = 'none';
         if(homeBody) homeBody.style.display = '';
-        
+
+        // 设置标志，阻止 switchCat 中的 scrollIntoView
+        window._fromSearchBack = true;
+
         // 1. 切换到该商品所属的分类
         switchCat(state.searchGoodCatId);
-        
+
         // 2. 读取目标索引
         const targetIndex = state.targetIndex >= 0 ? state.targetIndex : parseInt(sessionStorage.getItem('targetIndex') || '-1');
-        
+
         if(targetIndex >= 0){
           // 3. 如果目标商品还未加载，一次性加载到目标位置
           if(_pageOffset <= targetIndex){
             _appendGoodsPage(_pageElId, targetIndex + 1);
           }
-          
-          // 4. 用索引计算滚动位置（数据驱动，不找DOM）
-          const grid = document.getElementById(_pageElId + '-grid');
-          if(grid){
+
+          // 4. 等一帧，确保 DOM 已渲染，再计算滚动位置
+          requestAnimationFrame(() => {
+            const grid = document.getElementById(_pageElId + '-grid');
+            const scrollContainer = $(_pageElId);
+            if(!grid || !scrollContainer) return;
+
             const firstCard = grid.querySelector('.goods-card');
-            if(firstCard){
-              const cardHeight = firstCard.offsetHeight;
-              const gridStyle = window.getComputedStyle(grid);
-              const gap = parseInt(gridStyle.gap) || 8;
-              const rowHeight = cardHeight + gap;
-              const row = Math.floor(targetIndex / 2); // 2列布局
-              const scrollContainer = $(_pageElId);
-              if(scrollContainer){
-                scrollContainer.scrollTop = row * rowHeight;
-              }
-            }
-          }
+            if(!firstCard) return;
+
+            const cardHeight = firstCard.offsetHeight;
+            const gap = 8; // goods-grid 的 gap 固定为 8px
+            const rowHeight = cardHeight + gap;
+            const row = Math.floor(targetIndex / 2); // 2列布局
+
+            // 先确保 homeBody 滚动到商品区域可见
+            const catGoods = $('cat-goods-container');
+            if(catGoods) catGoods.scrollIntoView();
+
+            // 再设置商品面板的滚动位置
+            scrollContainer.scrollTop = row * rowHeight;
+          });
         }
-        
+
         // 重置搜索状态
         state.searchGoodCatId = 0;
         state.fromSearch = false;
         state.targetIndex = -1;
         sessionStorage.removeItem('targetIndex');
+        window._fromSearchBack = false;
       }
     }
   }
@@ -5960,11 +5969,13 @@ const B2_IMG_MAP = {
     state.currentCat = catId;
     renderCatList('cat-list', catId, 'App.switchCat');
     renderGoodsPanel('goods-panel', catId);
-    // 如果在Home，滚动到Categoria区
-    const homeBody = $('home-body');
-    if(homeBody){
-      const catGoods = $('cat-goods-container');
-      if(catGoods) setTimeout(()=>catGoods.scrollIntoView({behavior:'smooth'}),100);
+    // 如果在Home，滚动到Categoria区（从搜索后退时跳过，由 goBack 自己控制滚动）
+    if(!window._fromSearchBack){
+      const homeBody = $('home-body');
+      if(homeBody){
+        const catGoods = $('cat-goods-container');
+        if(catGoods) setTimeout(()=>catGoods.scrollIntoView({behavior:'smooth'}),100);
+      }
     }
   }
   function switchCat2(catId){
