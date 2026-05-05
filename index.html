@@ -6150,56 +6150,82 @@ function buyNow() {
   var _lastScanTime = 0;
   var _scanCooldown = 2000; // 2秒防重扫间隔
 
-  function toggleCamera(){
-    if(_camRunning){
-      stopCamera();
-    } else {
-      startCamera();
+  // 停止摄像头（优化版）
+  function stopCamera() {
+    if (_html5Qr && _camRunning) {
+      _html5Qr.stop().then(function () {
+        _camRunning = false;
+        const reader = $('scan-reader');
+        const placeholder = $('scan-placeholder');
+        const btn = $('scan-cam-btn');
+
+        if (reader) reader.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
+        if (btn) {
+          btn.textContent = 'Avvia Camera';
+          btn.style.background = 'var(--primary)';
+        }
+      }).catch(function (err) {
+        console.error('Stop camera error:', err);
+      });
     }
   }
 
-  function startCamera(){
+  // 启动摄像头（超高灵敏度版，核心优化）
+  function toggleCamera() {
     const reader = $('scan-reader');
     const placeholder = $('scan-placeholder');
     const btn = $('scan-cam-btn');
-    if(!reader || !placeholder || !btn) return;
 
+    if (_camRunning) {
+      stopCamera();
+      return;
+    }
+
+    // 🔥 核心：html5-qrcode 最高灵敏度配置
     _html5Qr = new Html5Qrcode("scan-reader");
-
-    const config = {
-      fps: 15,
-      qrbox: { width: 450, height: 280 },
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E,
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.CODE_39,
-        Html5QrcodeSupportedFormats.CODE_93,
-        Html5QrcodeSupportedFormats.CODABAR,
-        Html5QrcodeSupportedFormats.ITF,
-        Html5QrcodeSupportedFormats.QR_CODE
-      ]
+    const cameraConfig = {
+      fps: 20,                // 扫描频率拉满
+      qrbox: { width: 280, height: 280 }, // 扫描框更大
+      aspectRatio: 4 / 3,
+      disableFlip: false      // 不镜像，识别更准
+    };
+    const cameraConstraints = {
+      video: {
+        facingMode: "environment",  // 强制后置摄像头
+        focusMode: "continuous",    // 🔥 持续自动对焦（最关键）
+        exposureMode: "continuous", // 自动曝光
+        whiteBalanceMode: "continuous",
+        zoom: 1.0,
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
     };
 
+    // 显示摄像头
+    reader.style.display = "block";
+    placeholder.style.display = "none";
+    btn.textContent = "Arresta Camera";
+    btn.style.background = "#e53935";
+
+    // 启动扫码
     _html5Qr.start(
-      { facingMode: "environment" },
-      config,
-      function(decodedText){
-        var now = Date.now();
+      cameraConstraints,
+      cameraConfig,
+      function (decodedText) {
         // 防重复扫码：相同条码且在冷却期内
-        if(decodedText === _lastScanCode && now - _lastScanTime < _scanCooldown){
+        var now = Date.now();
+        if (decodedText === _lastScanCode && now - _lastScanTime < _scanCooldown) {
           return;
         }
         _lastScanCode = decodedText;
         _lastScanTime = now;
 
         // 震动反馈
-        if(navigator.vibrate) navigator.vibrate(100);
+        if (navigator.vibrate) navigator.vibrate(100);
 
         // 短促嘀声
-        try{
+        try {
           var ctx = new (window.AudioContext || window.webkitAudioContext)();
           var osc = ctx.createOscillator();
           var gain = ctx.createGain();
@@ -6210,52 +6236,28 @@ function buyNow() {
           gain.gain.value = 0.4;
           osc.start();
           osc.stop(ctx.currentTime + 0.08);
-        }catch(e){}
+        } catch (e) { }
 
         _html5Qr.pause(true);
         handleScannedCode(decodedText);
-        setTimeout(function(){
-          if(_camRunning) _html5Qr.resume();
+        setTimeout(function () {
+          if (_camRunning) _html5Qr.resume();
         }, 1000);
       },
-      function(error){}
-    ).then(function(){
+      function (err) {
+        // 识别失败不报错，不影响体验
+      }
+    ).then(function () {
       _camRunning = true;
-      reader.style.display = 'block';
-      placeholder.style.display = 'none';
-      btn.textContent = 'Ferma Camera';
-      btn.style.background = '#666';
-      // 手动设置video元素样式，放大画面
-      setTimeout(function(){
-        var video = reader.querySelector('video');
-        if(video){
-          video.style.width = '100%';
-          video.style.height = '100%';
-          video.style.objectFit = 'none';
-          video.style.zoom = '2';
-          video.style.display = 'block';
-        }
-      }, 100);
-    }).catch(function(err){
+    }).catch(function (err) {
       console.error('Camera start error:', err);
       showToast('Errore avvio camera');
+      // 恢复UI状态
+      reader.style.display = 'none';
+      placeholder.style.display = 'flex';
+      btn.textContent = 'Avvia Camera';
+      btn.style.background = 'var(--primary)';
     });
-  }
-
-  function stopCamera(){
-    if(_html5Qr){
-      _html5Qr.stop().then(function(){
-        _camRunning = false;
-        const reader = $('scan-reader');
-        const placeholder = $('scan-placeholder');
-        const btn = $('scan-cam-btn');
-        if(reader) reader.style.display = 'none';
-        if(placeholder) placeholder.style.display = 'flex';
-        if(btn){ btn.textContent = 'Avvia Camera'; btn.style.background = 'var(--primary)'; }
-      }).catch(function(err){
-        console.error('Stop camera error:', err);
-      });
-    }
   }
 
   function handleScannedCode(code){
