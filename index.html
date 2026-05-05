@@ -6185,8 +6185,8 @@ function buyNow() {
     _html5Qr = new Html5Qrcode("scan-reader");
 
     const config = {
-      fps: 20,                // 扫描频率：15 → 20fps
-      qrbox: { width: 280, height: 280 }, // 扫描框：450x280 → 280x280
+      fps: 15,
+      qrbox: { width: 450, height: 280 },
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.EAN_8,
@@ -6201,19 +6201,8 @@ function buyNow() {
       ]
     };
 
-    // 🔥 核心：摄像头约束（最高灵敏度）
-    const videoConstraints = {
-      facingMode: "environment",  // 强制后置摄像头
-      focusMode: "continuous",    // 🔥 持续自动对焦（最关键）
-      exposureMode: "continuous", // 自动曝光
-      whiteBalanceMode: "continuous", // 自动白平衡
-      zoom: 1.0,
-      width: { ideal: 1280 },    // 提升分辨率到 1280x720
-      height: { ideal: 720 }
-    };
-
     _html5Qr.start(
-      videoConstraints,  // 🔥 传入摄像头约束（最关键）
+      { facingMode: "environment" },
       config,
       function(decodedText){
         var now = Date.now();
