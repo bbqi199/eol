@@ -5835,30 +5835,48 @@ const B2_IMG_MAP = {
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       $(prev).classList.add('active');
       
-      // 从搜索结果后退时，恢复搜索覆盖层
-      if(prev === 'page-home' && state.fromSearch){
+      // 从搜索结果后退时，跳转到该商品在商品列表中的位置
+      if(prev === 'page-home' && state.searchGoodCatId && state.currentGood){
         const overlay = $('search-overlay');
         const homeBody = $('home-body');
-        const searchInput = $('search-input');
+        if(overlay) overlay.style.display = 'none';
+        if(homeBody) homeBody.style.display = '';
         
-        // 1. 恢复搜索关键词到输入框
-        if(searchInput && state.searchKeyword) {
-          searchInput.value = state.searchKeyword;
-        }
+        // 1. 切换到该商品所属的分类
+        switchCat(state.searchGoodCatId);
         
-        // 2. 重新生成搜索结果（这会自动显示overlay并隐藏homeBody）
-        if(state.searchKeyword) {
-          renderSearchResults(state.searchKeyword);
-        }
+        // 2. 找到目标商品在列表中的索引
+        const targetGoodId = String(state.currentGood.id);
+        const targetIndex = _pageList.findIndex(g => String(g.id) === targetGoodId);
         
-        // 3. 等待DOM更新后，恢复滚动位置
-        if(overlay && state.searchScrollTop > 0) {
+        if(targetIndex >= 0){
+          // 3. 如果目标商品还未加载，一次性加载到目标位置（多加载10个，确保目标商品不在底部）
+          if(_pageOffset <= targetIndex){
+            _appendGoodsPage(_pageElId, targetIndex + 10);
+          }
+          
+          // 4. 等待DOM更新后，滚动到目标商品
           setTimeout(() => {
-            overlay.scrollTop = state.searchScrollTop;
-          }, 50);
+            const targetCard = document.querySelector('[data-gid="' + targetGoodId + '"]');
+            if(targetCard){
+              targetCard.scrollIntoView({behavior: 'smooth', block: 'center'});
+              // 高亮显示目标商品
+              targetCard.style.boxShadow = '0 0 0 3px var(--primary)';
+              setTimeout(() => {
+                targetCard.style.boxShadow = '';
+              }, 2000);
+            } else {
+              console.error('Target card not found:', targetGoodId);
+              console.log('Current _pageOffset:', _pageOffset);
+              console.log('Target index:', targetIndex);
+            }
+          }, 100);
+        } else {
+          console.error('Target good not found in _pageList:', targetGoodId);
         }
         
         // 重置搜索状态
+        state.searchGoodCatId = 0;
         state.fromSearch = false;
       }
     }
@@ -6166,32 +6184,37 @@ function buyNow() {
 
     _html5Qr = new Html5Qrcode("scan-reader");
 
-    // 🔥 核心：最高灵敏度配置
-    const cameraConfig = {
-      fps: 20,                // 扫描频率拉满
-      qrbox: { width: 280, height: 280 }, // 扫描框更大
-      aspectRatio: 4/3,
-      disableFlip: false      // 不镜像，识别更准
+    const config = {
+      fps: 20,                // 扫描频率：15 → 20fps
+      qrbox: { width: 280, height: 280 }, // 扫描框：450x280 → 280x280
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.CODE_93,
+        Html5QrcodeSupportedFormats.CODABAR,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.QR_CODE
+      ]
     };
-    const cameraConstraints = {
+
+    // 🔥 核心：摄像头约束（最高灵敏度）
+    const videoConstraints = {
       facingMode: "environment",  // 强制后置摄像头
       focusMode: "continuous",    // 🔥 持续自动对焦（最关键）
       exposureMode: "continuous", // 自动曝光
-      whiteBalanceMode: "continuous",
+      whiteBalanceMode: "continuous", // 自动白平衡
       zoom: 1.0,
-      width: { ideal: 1280 },
+      width: { ideal: 1280 },    // 提升分辨率到 1280x720
       height: { ideal: 720 }
     };
 
-    // 显示摄像头
-    reader.style.display = "block";
-    placeholder.style.display = "none";
-    btn.textContent = "Arresta Camera";
-    btn.style.background = "#e53935";
-
     _html5Qr.start(
-      cameraConstraints,
-      cameraConfig,
+      videoConstraints,  // 🔥 传入摄像头约束（最关键）
+      config,
       function(decodedText){
         var now = Date.now();
         // 防重复扫码：相同条码且在冷却期内
@@ -6224,24 +6247,32 @@ function buyNow() {
           if(_camRunning) _html5Qr.resume();
         }, 1000);
       },
-      function(err){
-        // 识别失败不报错，不影响体验
-      }
+      function(error){}
     ).then(function(){
       _camRunning = true;
+      reader.style.display = 'block';
+      placeholder.style.display = 'none';
+      btn.textContent = 'Ferma Camera';
+      btn.style.background = '#666';
+      // 手动设置video元素样式，放大画面
+      setTimeout(function(){
+        var video = reader.querySelector('video');
+        if(video){
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.objectFit = 'none';
+          video.style.zoom = '2';
+          video.style.display = 'block';
+        }
+      }, 100);
     }).catch(function(err){
       console.error('Camera start error:', err);
       showToast('Errore avvio camera');
-      // 恢复UI状态
-      reader.style.display = 'none';
-      placeholder.style.display = 'flex';
-      btn.textContent = 'Avvia Camera';
-      btn.style.background = 'var(--primary)';
     });
   }
 
   function stopCamera(){
-    if(_html5Qr && _camRunning){
+    if(_html5Qr){
       _html5Qr.stop().then(function(){
         _camRunning = false;
         const reader = $('scan-reader');
@@ -6249,10 +6280,7 @@ function buyNow() {
         const btn = $('scan-cam-btn');
         if(reader) reader.style.display = 'none';
         if(placeholder) placeholder.style.display = 'flex';
-        if(btn){
-          btn.textContent = 'Avvia Camera';
-          btn.style.background = 'var(--primary)';
-        }
+        if(btn){ btn.textContent = 'Avvia Camera'; btn.style.background = 'var(--primary)'; }
       }).catch(function(err){
         console.error('Stop camera error:', err);
       });
