@@ -5833,58 +5833,50 @@ const B2_IMG_MAP = {
     const prev = state.pageStack.pop();
     if(!prev){ showPage('page-home'); return; }
 
+    // 从搜索结果后退：恢复搜索覆盖层
+    if(state.fromSearch && prev === 'page-home'){
+      // 1. 激活首页
+      state.currentPage = 'page-home';
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      $('page-home').classList.add('active');
+
+      // 2. 显示搜索覆盖层，隐藏主页内容
+      const overlay = $('search-overlay');
+      const homeBody = $('home-body');
+      const input = $('search-input');
+      const clearBtn = $('search-clear');
+
+      if(overlay){ overlay.style.display = 'block'; }
+      if(homeBody){ homeBody.style.display = 'none'; }
+
+      // 3. 恢复搜索输入框内容
+      if(input && state.searchKeyword){
+        input.value = state.searchKeyword;
+        if(clearBtn) clearBtn.style.display = 'inline';
+      }
+
+      // 4. 重新渲染搜索结果
+      if(state.searchKeyword){
+        renderSearchResults(state.searchKeyword);
+      }
+
+      // 5. 恢复滚动位置（等 DOM 更新后）
+      setTimeout(function(){
+        if(overlay && state.searchScrollTop){
+          overlay.scrollTop = state.searchScrollTop;
+        }
+      }, 50);
+
+      // 6. 重置状态
+      state.fromSearch = false;
+      state.searchGoodCatId = 0;
+      return;
+    }
+
+    // 正常后退逻辑
     state.currentPage = prev;
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     $(prev).classList.add('active');
-
-    // 从搜索结果后退：用 index 直接算位置，不找 DOM
-    if(prev === 'page-home' && state.searchGoodCatId && state.currentGood){
-      const overlay = $('search-overlay');
-      const homeBody = $('home-body');
-      if(overlay) overlay.style.display = 'none';
-      if(homeBody) homeBody.style.display = '';
-
-      const targetIndex = state.targetIndex >= 0
-        ? state.targetIndex
-        : parseInt(sessionStorage.getItem('targetIndex') || '-1');
-
-      if(targetIndex >= 0){
-        // 1. 切换分类（会加载前50个商品）
-        window._fromSearchBack = true;
-        switchCat(state.searchGoodCatId);
-        window._fromSearchBack = false;
-
-        // 2. 如果目标商品未加载，追加加载到目标位置
-        if(_pageOffset <= targetIndex){
-          _appendGoodsPage(_pageElId, targetIndex + 1);
-        }
-
-        // 3. 用固定估算高度算 scrollTop，完全不读 DOM
-        //    2列布局：每行2个商品，估算每行高度 ≈ 310px
-        const FIXED_ROW_HEIGHT = 310;
-        const row = Math.floor(targetIndex / 2);
-        const scrollTop = row * FIXED_ROW_HEIGHT;
-
-        // 4. 等两帧确保 DOM 已渲染，再设置 scrollTop
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            const scrollContainer = $(_pageElId);
-            if(scrollContainer){
-              scrollContainer.scrollTop = scrollTop;
-            }
-            // 同时把 homeBody 滚到商品区域可见
-            const catGoods = $('cat-goods-container');
-            if(catGoods) catGoods.scrollIntoView();
-          });
-        });
-      }
-
-      // 重置状态
-      state.searchGoodCatId = 0;
-      state.fromSearch = false;
-      state.targetIndex = -1;
-      sessionStorage.removeItem('targetIndex');
-    }
   }
   // 监听手机系统后退键（Android / 浏览器后退按钮）
   window.addEventListener('popstate', function(){
