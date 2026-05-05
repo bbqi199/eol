@@ -6185,8 +6185,8 @@ function buyNow() {
     _html5Qr = new Html5Qrcode("scan-reader");
 
     const config = {
-      fps: 15,
-      qrbox: { width: 450, height: 280 },
+      fps: 20,                // 提高扫描频率：15 → 20fps
+      qrbox: { width: 280, height: 280 }, // 增大扫描框：450x280 → 280x280
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.EAN_8,
