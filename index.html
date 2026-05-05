@@ -6030,6 +6030,9 @@ const B2_IMG_MAP = {
           <div class="detail-price-unit">/${g.unit}</div>
           <div class="detail-stock">Disponibile</div>
         </div>
+        <div style="margin-top:8px;">
+          <button class="btn-buy" style="width:100%;font-size:14px;padding:10px;" onclick="App.goToCategory()">Esplora la categoria</button>
+        </div>
         <div class="detail-tags">${(g.tag||[]).map(t=>`<span class="detail-tag">${t}</span>`).join('')}</div>
       </div>
       <div class="detail-section">
@@ -6053,9 +6056,6 @@ const B2_IMG_MAP = {
         <div style="font-size:13px;color:var(--text-2);line-height:1.8;">${g.name}，${g.spec}。Questo prodotto è fornito direttamente dal venditore all'ingrosso. Prezzi migliori per quantità maggiori. Contattaci per consultazioni. La spedizione viene organizzata entro 1-3 giorni lavorativi dall'ordine, consegna in tutta Italia.</div>
       </div>
       <div style="height:80px;"></div>
-      <div style="padding:0 16px 16px;">
-        <button class="btn-buy" style="width:100%;" onclick="App.goToCategory()">Esplora la categoria</button>
-      </div>
     `;
     $('detail-footer').innerHTML=`
       <div class="detail-footer">
