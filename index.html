@@ -5830,64 +5830,83 @@ const B2_IMG_MAP = {
     }
   }
   function goBack(){
+    console.log('[goBack] pageStack:', JSON.stringify(state.pageStack));
     const prev = state.pageStack.pop();
-    if(prev){
-      state.currentPage = prev;
-      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-      $(prev).classList.add('active');
+    console.log('[goBack] prev:', prev);
+    if(!prev){
+      console.warn('[goBack] pageStack 为空，强制回到首页');
+      showPage('page-home');
+      return;
+    }
+    state.currentPage = prev;
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    $(prev).classList.add('active');
 
-      // 从搜索结果后退时，跳转到该商品在商品列表中的位置
-      if(prev === 'page-home' && state.searchGoodCatId && state.currentGood){
-        const overlay = $('search-overlay');
-        const homeBody = $('home-body');
-        if(overlay) overlay.style.display = 'none';
-        if(homeBody) homeBody.style.display = '';
+    // 从搜索结果后退时，跳转到该商品在商品列表中的位置
+    if(prev === 'page-home' && state.searchGoodCatId && state.currentGood){
+      console.log('[goBack] 搜索后退，searchGoodCatId:', state.searchGoodCatId, 'targetIndex:', state.targetIndex);
+      const overlay = $('search-overlay');
+      const homeBody = $('home-body');
+      if(overlay) overlay.style.display = 'none';
+      if(homeBody) homeBody.style.display = '';
 
-        // 设置标志，阻止 switchCat 中的 scrollIntoView
+      // 读取目标索引
+      const targetIndex = state.targetIndex >= 0 ? state.targetIndex : parseInt(sessionStorage.getItem('targetIndex') || '-1');
+      console.log('[goBack] targetIndex:', targetIndex);
+
+      if(targetIndex >= 0){
+        // 标记：阻止 switchCat 里的 scrollIntoView
         window._fromSearchBack = true;
-
-        // 1. 切换到该商品所属的分类
+        // 切换到该商品所属的分类
         switchCat(state.searchGoodCatId);
+        window._fromSearchBack = false;
 
-        // 2. 读取目标索引
-        const targetIndex = state.targetIndex >= 0 ? state.targetIndex : parseInt(sessionStorage.getItem('targetIndex') || '-1');
+        // 如果目标商品还未加载，一次性加载到目标位置
+        if(_pageOffset <= targetIndex){
+          _appendGoodsPage(_pageElId, targetIndex + 1);
+        }
 
-        if(targetIndex >= 0){
-          // 3. 如果目标商品还未加载，一次性加载到目标位置
-          if(_pageOffset <= targetIndex){
-            _appendGoodsPage(_pageElId, targetIndex + 1);
-          }
-
-          // 4. 等一帧，确保 DOM 已渲染，再计算滚动位置
+        // 等两帧，确保 DOM 已渲染，再计算滚动位置
+        requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             const grid = document.getElementById(_pageElId + '-grid');
             const scrollContainer = $(_pageElId);
-            if(!grid || !scrollContainer) return;
+            if(!grid || !scrollContainer){
+              console.warn('[goBack] 找不到 grid 或 scrollContainer');
+              return;
+            }
 
             const firstCard = grid.querySelector('.goods-card');
-            if(!firstCard) return;
+            if(!firstCard){
+              console.warn('[goBack] 找不到 .goods-card');
+              return;
+            }
 
             const cardHeight = firstCard.offsetHeight;
-            const gap = 8; // goods-grid 的 gap 固定为 8px
+            const gap = 8;
             const rowHeight = cardHeight + gap;
             const row = Math.floor(targetIndex / 2); // 2列布局
+            const scrollTop = row * rowHeight;
 
-            // 先确保 homeBody 滚动到商品区域可见
-            const catGoods = $('cat-goods-container');
-            if(catGoods) catGoods.scrollIntoView();
+            console.log('[goBack] 滚动：cardHeight='+cardHeight+', row='+row+', scrollTop='+scrollTop);
 
-            // 再设置商品面板的滚动位置
-            scrollContainer.scrollTop = row * rowHeight;
+            scrollContainer.scrollTop = scrollTop;
+
+            // 高亮目标商品
+            const targetCard = grid.querySelector('[data-gid="'+state.currentGood.id+'"]');
+            if(targetCard){
+              targetCard.style.boxShadow = '0 0 0 3px var(--primary)';
+              setTimeout(()=>{ targetCard.style.boxShadow = ''; }, 2000);
+            }
           });
-        }
-
-        // 重置搜索状态
-        state.searchGoodCatId = 0;
-        state.fromSearch = false;
-        state.targetIndex = -1;
-        sessionStorage.removeItem('targetIndex');
-        window._fromSearchBack = false;
+        });
       }
+
+      // 重置搜索状态
+      state.searchGoodCatId = 0;
+      state.fromSearch = false;
+      state.targetIndex = -1;
+      sessionStorage.removeItem('targetIndex');
     }
   }
   // 监听手机系统后退键（Android / 浏览器后退按钮）
