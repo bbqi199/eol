@@ -487,27 +487,27 @@
         </div>
         <div class="entry-item" onclick="App.switchCat(1)">
           <div class="entry-icon" style="background:#f0f9eb">🧴</div>
-          <div class="entry-label">disney</div>
+          <div class="entry-label">e mio</div>
         </div>
         <div class="entry-item" onclick="App.switchCat(2)">
           <div class="entry-icon" style="background:#f0f6ff">🍜</div>
-          <div class="entry-label">CLEMENTONI</div>
+          <div class="entry-label">disney</div>
         </div>
         <div class="entry-item" onclick="App.switchCat(3)">
           <div class="entry-icon" style="background:#fff8f0">🧸</div>
-          <div class="entry-label">Cancelleria</div>
+          <div class="entry-label">CLEMENTONI</div>
         </div>
         <div class="entry-item" onclick="App.switchCat(4)">
           <div class="entry-icon" style="background:#f5f0ff">👗</div>
-          <div class="entry-label">quaderni</div>
+          <div class="entry-label">Cancelleria</div>
         </div>
         <div class="entry-item" onclick="App.switchCat(5)">
           <div class="entry-icon" style="background:#f0fcff">🔧</div>
-          <div class="entry-label">casalinghi</div>
+          <div class="entry-label">quaderni</div>
         </div>
         <div class="entry-item" onclick="App.showToast('In arrivo')">
           <div class="entry-icon" style="background:#fff0f5">💄</div>
-          <div class="entry-label">Cosmetici e Cura della Pelle</div>
+          <div class="entry-label">casalinghi</div>
         </div>
         <div class="entry-item" onclick="App.showToast('In arrivo')">
           <div class="entry-icon" style="background:#f0fff4">🌿</div>
@@ -933,11 +933,13 @@
 // =====================================================
 const CATEGORIES = [
   { id:0, name:"eol", icon:'🏠' },
-  { id:1, name:"disney", icon:'🧴' },
-  { id:2, name:"CLEMENTONI", icon:'🍜' },
-  { id:3, name:"Cancelleria", icon:'🧸' },
-  { id:4, name:"quaderni", icon:'👗' },
-  { id:5, name:"casalinghi", icon:'🔧' },
+  { id:1, name:"e mio", icon:'🧴' },
+  { id:2, name:"disney", icon:'🍜' },
+  { id:3, name:"CLEMENTONI", icon:'🧸' },
+  { id:4, name:"Cancelleria", icon:'👗' },
+  { id:5, name:"quaderni", icon:'🔧' },
+  { id:6, name:"casalinghi", icon:'🔧' },
+
 ];
 
 let GOODS_DATA = [];
@@ -5756,25 +5758,17 @@ const B2_IMG_MAP = {
 "96137178":"96137178.jpg",
 };
 // -----------------------------
-
   const R2_BASE = 'https://ecoshop.zongweihai199.workers.dev/';
-  function getImgUrl(g){
-    if(g.id) {
-      return R2_BASE + g.id + '.jpg';
-    }
-    return '';
-  }
-  
-  // 图片加载失败时直接显示emoji（R2只有.jpg，无需尝试其他后缀）
-  window.tryAlternateExt = function(img, id) {
-    img.style.display = 'none';
-    if(img.nextElementSibling && img.nextElementSibling.tagName === 'SPAN') {
-      img.nextElementSibling.style.display = 'flex';
-    }
-  };
 
-  // 生成商品图片HTML：<img> + onerror回退emoji
-  function goodsImgHtml(g, cls='goods-img', extraStyle=''){
+  // Worker 做缓存层（Cloudflare CDN 缓存图片，不消耗 B2 流量）
+  function getImgUrl(g){
+    if(!g.id) return '';
+    const fname = IMG_VERSION_MAP[g.id] || (g.id + '.jpg');
+    return R2_BASE + fname;
+  }
+
+  // 图片加载失败时直接显示emoji
+  window.tryAlternateExt = function(img, id) {
     const url = getImgUrl(g);
     const fallback = g.emoji || '📦';
     return `<div class="${cls}" style="position:relative;overflow:hidden;${extraStyle}">
@@ -7764,4 +7758,4 @@ if(!IS_LOCAL_HOST){
 <!-- 更新时间: 2026-04-07 01:37:25 -->
 <!-- 更新时间: 2026-04-07 02:14:31 -->
 <!-- 更新时间: 2026-04-18 13:24:25 -->
-<!-- 更新时间: 2026-05-06 14:25:58 -->
+<!-- 更新时间: 2026-05-06 23:09:29 -->
