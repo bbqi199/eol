@@ -7220,8 +7220,18 @@ function buyNow() {
   function goodsImgHtml(g, cssClass){
     if(!g) return '<div class="'+cssClass+'">📷</div>';
     var emoji = g.emoji || '📦';
-    // 优先使用本地图片
-    return '<div class="'+cssClass+'"><img src="/all_categ_images/'+g.id+'.jpg" alt="'+g.name+'" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+emoji+'\'"></div>';
+    var fallback = "this.style.display='none';this.parentElement.textContent='"+emoji+"'";
+    // 优先使用 imageUrl（R2 图床等）
+    if(g.imageUrl){
+      return '<div class="'+cssClass+'"><img src="'+g.imageUrl+'" alt="'+g.name+'" onerror="'+fallback+'"></div>';
+    }
+    // R2 图床兜底
+    var r2Url = 'https://ecoshop.zongweihai199.workers.dev/' + g.id + '.jpg';
+    // 本地开发环境同时尝试本地路径
+    var localSrc = '/all_categ_images/' + g.id + '.jpg';
+    var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    var imgSrc = isLocal ? localSrc : r2Url;
+    return '<div class="'+cssClass+'"><img src="'+imgSrc+'" alt="'+g.name+'" onerror="'+fallback+'"></div>';
   }
 
 
