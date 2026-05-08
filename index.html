@@ -483,31 +483,31 @@
       <div class="quick-entry">
         <div class="entry-item" onclick="App.switchCat(0)">
           <div class="entry-icon" style="background:#fff3ef">🏠</div>
-          <div class="entry-label">eol</div>
+          <div class="entry-label">OFFERTA DI SETTIMANA</div>
         </div>
         <div class="entry-item" onclick="App.switchCat(1)">
           <div class="entry-icon" style="background:#f0f9eb">🧴</div>
-          <div class="entry-label">e mio</div>
+          <div class="entry-label">Prodotti per l'Igiene</div>
         </div>
         <div class="entry-item" onclick="App.switchCat(2)">
           <div class="entry-icon" style="background:#f0f6ff">🍜</div>
-          <div class="entry-label">disney</div>
+          <div class="entry-label">Alimentari e Snack</div>
         </div>
         <div class="entry-item" onclick="App.switchCat(3)">
           <div class="entry-icon" style="background:#fff8f0">🧸</div>
-          <div class="entry-label">CLEMENTONI</div>
+          <div class="entry-label">Giochi e Cancelleria</div>
         </div>
         <div class="entry-item" onclick="App.switchCat(4)">
           <div class="entry-icon" style="background:#f5f0ff">👗</div>
-          <div class="entry-label">Cancelleria</div>
+          <div class="entry-label">Abbigliamento e Accessori</div>
         </div>
         <div class="entry-item" onclick="App.switchCat(5)">
           <div class="entry-icon" style="background:#f0fcff">🔧</div>
-          <div class="entry-label">quaderni</div>
+          <div class="entry-label">Ferramenta e Utensili</div>
         </div>
         <div class="entry-item" onclick="App.showToast('In arrivo')">
           <div class="entry-icon" style="background:#fff0f5">💄</div>
-          <div class="entry-label">casalinghi</div>
+          <div class="entry-label">Cosmetici e Cura della Pelle</div>
         </div>
         <div class="entry-item" onclick="App.showToast('In arrivo')">
           <div class="entry-icon" style="background:#f0fff4">🌿</div>
@@ -932,14 +932,12 @@
 // 数据：Categorie Prodotti & 商品列表
 // =====================================================
 const CATEGORIES = [
-  { id:0, name:"eol", icon:'🏠' },
-  { id:1, name:"e mio", icon:'🧴' },
-  { id:2, name:"disney", icon:'🍜' },
-  { id:3, name:"CLEMENTONI", icon:'🧸' },
-  { id:4, name:"Cancelleria", icon:'👗' },
-  { id:5, name:"quaderni", icon:'🔧' },
-  { id:6, name:"casalinghi", icon:'🔧' },
-
+  { id:0, name:"OFFERTA DI SETTIMANA", icon:'🏠' },
+  { id:1, name:"Prodotti per l'Igiene", icon:'🧴' },
+  { id:2, name:"Alimentari e Snack", icon:'🍜' },
+  { id:3, name:"Giochi e Cancelleria", icon:'🧸' },
+  { id:4, name:"Abbigliamento e Accessori", icon:'👗' },
+  { id:5, name:"Ferramenta e Utensili", icon:'🔧' },
 ];
 
 let GOODS_DATA = [];
@@ -968,45 +966,18 @@ function _ref(){
 
 // 从外部JSON文件加载商品数据
 // 注意：file:// 协议下 fetch 会被浏览器 CORS 拦截，需通过本地服务器 http://localhost 访问
-
-// ── 双锁协调：goods.json 加载完 + 登录验证完，才调用 App.init() ──
-var _goodsReady = false;
-var _loginReady = false;
-var _appInited = false;
-function _tryAppInit(){
-  if(_goodsReady && _loginReady && !_appInited){
-    _appInited = true;
-    if(typeof App !== 'undefined' && App.init) App.init();
-  }
-}
-
 fetch('goods.json?t=' + Date.now())
-    .then(res => {
-        if(!res.ok) throw new Error('HTTP ' + res.status);
-        return res.json();
-    })
+    .then(res => res.json())
     .then(data => {
         GOODS_DATA = data;
-        // 同步到 localStorage，作为线上版的后备数据源
-        try { localStorage.setItem('yg_goods', JSON.stringify(GOODS_DATA)); } catch(e){}
-        _goodsReady = true;
-        _tryAppInit();
+        console.log('商品数据加载完成，共 ' + GOODS_DATA.length + ' 件');
+        // 数据加载完成后调用 App.init()
+        if(typeof App !== 'undefined' && App.init) App.init();
     })
     .catch(err => {
-        console.warn('goods.json 加载失败，尝试从 localStorage 恢复:', err.message);
-        // 线上环境可能没有 goods.json 文件，从 localStorage 恢复之前导入的商品数据
-        try {
-            var cached = localStorage.getItem('yg_goods');
-            if(cached){
-                var parsed = JSON.parse(cached);
-                if(Array.isArray(parsed) && parsed.length > 0){
-                    GOODS_DATA = parsed;
-                    console.log('从 localStorage 恢复了 ' + GOODS_DATA.length + ' 件商品');
-                }
-            }
-        } catch(e){}
-        _goodsReady = true;
-        _tryAppInit();
+        console.error('加载商品数据失败:', err);
+        // 即使加载失败也尝试初始化
+        if(typeof App !== 'undefined' && App.init) App.init();
     });
 
 // =====================================================
@@ -1032,9 +1003,7 @@ const App = (function(){
     // 搜索状态（用于后退时恢复）
     searchKeyword: '',      // 搜索关键词
     searchScrollTop: 0,    // 搜索结果滚动位置
-    searchGoodCatId: 0,    // 从搜索结果进入时，该商品的分类ID
-    fromSearch: false,     // 是否从搜索结果进入详情页
-    targetIndex: -1,       // 从搜索结果进入时，商品在分类列表中的索引
+    fromSearch: false,      // 是否从搜索结果进入详情页
   };
 
   // ---------- 持久化 ----------
@@ -5785,17 +5754,25 @@ const B2_IMG_MAP = {
 "96137178":"96137178.jpg",
 };
 // -----------------------------
+
   const R2_BASE = 'https://ecoshop.zongweihai199.workers.dev/';
-
-  // Worker 做缓存层（Cloudflare CDN 缓存图片，不消耗 B2 流量）
   function getImgUrl(g){
-    if(!g.id) return '';
-    const fname = IMG_VERSION_MAP[g.id] || (g.id + '.jpg');
-    return R2_BASE + fname;
+    if(g.id) {
+      return R2_BASE + g.id + '.jpg';
+    }
+    return '';
   }
-
-  // 图片加载失败时直接显示emoji
+  
+  // 图片加载失败时直接显示emoji（R2只有.jpg，无需尝试其他后缀）
   window.tryAlternateExt = function(img, id) {
+    img.style.display = 'none';
+    if(img.nextElementSibling && img.nextElementSibling.tagName === 'SPAN') {
+      img.nextElementSibling.style.display = 'flex';
+    }
+  };
+
+  // 生成商品图片HTML：<img> + onerror回退emoji
+  function goodsImgHtml(g, cls='goods-img', extraStyle=''){
     const url = getImgUrl(g);
     const fallback = g.emoji || '📦';
     return `<div class="${cls}" style="position:relative;overflow:hidden;${extraStyle}">
@@ -5852,63 +5829,47 @@ const B2_IMG_MAP = {
   }
   function goBack(){
     const prev = state.pageStack.pop();
-    if(!prev){ showPage('page-home'); return; }
-
-    // 从搜索结果后退：恢复搜索覆盖层
-    if(state.fromSearch && prev === 'page-home'){
-      // 1. 激活首页
-      state.currentPage = 'page-home';
+    if(prev){
+      state.currentPage = prev;
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-      $('page-home').classList.add('active');
-
-      // 2. 显示搜索覆盖层，隐藏主页内容
-      const overlay = $('search-overlay');
-      const homeBody = $('home-body');
-      const input = $('search-input');
-      const clearBtn = $('search-clear');
-
-      if(overlay){ overlay.style.display = 'block'; }
-      if(homeBody){ homeBody.style.display = 'none'; }
-
-      // 3. 恢复搜索输入框内容
-      if(input && state.searchKeyword){
-        input.value = state.searchKeyword;
-        if(clearBtn) clearBtn.style.display = 'inline';
-      }
-
-      // 4. 重新渲染搜索结果
-      if(state.searchKeyword){
-        renderSearchResults(state.searchKeyword);
-      }
-
-      // 5. 恢复滚动位置（等 DOM 更新后）
-      setTimeout(function(){
-        if(overlay && state.searchScrollTop){
-          overlay.scrollTop = state.searchScrollTop;
+      $(prev).classList.add('active');
+      
+      // 从搜索结果后退时，恢复搜索覆盖层
+      if(prev === 'page-home' && state.fromSearch){
+        const overlay = $('search-overlay');
+        const homeBody = $('home-body');
+        const searchInput = $('search-input');
+        
+        // 1. 恢复搜索关键词到输入框
+        if(searchInput && state.searchKeyword) {
+          searchInput.value = state.searchKeyword;
         }
-      }, 50);
-
-      // 6. 重置状态
-      state.fromSearch = false;
-      state.searchGoodCatId = 0;
-      return;
+        
+        // 2. 重新生成搜索结果（这会自动显示overlay并隐藏homeBody）
+        if(state.searchKeyword) {
+          renderSearchResults(state.searchKeyword);
+        }
+        
+        // 3. 等待DOM更新后，恢复滚动位置
+        if(overlay && state.searchScrollTop > 0) {
+          setTimeout(() => {
+            overlay.scrollTop = state.searchScrollTop;
+          }, 50);
+        }
+        
+        // 重置搜索状态
+        state.fromSearch = false;
+      }
     }
-
-    // 正常后退逻辑
-    state.currentPage = prev;
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-    $(prev).classList.add('active');
   }
   // 从详情页跳转到当前商品所属分类
   function goToCategory(){
     const g = state.currentGood;
     if(!g) return;
-    // 回到首页并切换到该商品分类
     showPage('page-home');
     setTimeout(function(){
       switchCat(g.catId);
-      // 滚动到商品区域
-      const catGoods = $('cat-goods-container');
+      const catGoods = document.getElementById('cat-goods-container');
       if(catGoods) catGoods.scrollIntoView({behavior:'smooth'});
     }, 100);
   }
@@ -5957,17 +5918,11 @@ const B2_IMG_MAP = {
       _pageObserver.observe(sentinel);
     }
   }
-  function _appendGoodsPage(elId, targetOffset){
+  function _appendGoodsPage(elId){
     if(_pageOffset >= _pageList.length) return;
     const grid = document.getElementById(elId+'-grid');
     if(!grid) return;
-    
-    // 如果指定了 targetOffset，则加载到该位置
-    const end = targetOffset ? Math.min(_pageList.length, targetOffset) : (_pageOffset + PAGE_SIZE);
-    const slice = _pageList.slice(_pageOffset, end);
-    
-    if(slice.length === 0) return;
-    
+    const slice = _pageList.slice(_pageOffset, _pageOffset + PAGE_SIZE);
     grid.insertAdjacentHTML('beforeend', slice.map(g=>`
       <div class="goods-card" data-gid="${g.id}" onclick="App.openDetail('${g.id}')">
         ${goodsImgHtml(g,'goods-img')}
@@ -5981,7 +5936,6 @@ const B2_IMG_MAP = {
         </div>
       </div>`).join(''));
     _pageOffset += slice.length;
-    
     // 已加载完，移除哨兵
     if(_pageOffset >= _pageList.length && _pageObserver){
       _pageObserver.disconnect(); _pageObserver=null;
@@ -5991,13 +5945,11 @@ const B2_IMG_MAP = {
     state.currentCat = catId;
     renderCatList('cat-list', catId, 'App.switchCat');
     renderGoodsPanel('goods-panel', catId);
-    // 如果在Home，滚动到Categoria区（从搜索后退时跳过，由 goBack 自己控制滚动）
-    if(!window._fromSearchBack){
-      const homeBody = $('home-body');
-      if(homeBody){
-        const catGoods = $('cat-goods-container');
-        if(catGoods) setTimeout(()=>catGoods.scrollIntoView({behavior:'smooth'}),100);
-      }
+    // 如果在Home，滚动到Categoria区
+    const homeBody = $('home-body');
+    if(homeBody){
+      const catGoods = $('cat-goods-container');
+      if(catGoods) setTimeout(()=>catGoods.scrollIntoView({behavior:'smooth'}),100);
     }
   }
   function switchCat2(catId){
@@ -6022,18 +5974,10 @@ const B2_IMG_MAP = {
     const overlay = $('search-overlay');
     if(overlay && overlay.style.display !== 'none'){
       state.fromSearch = true;
-      state.searchGoodCatId = g.catId;  // 保存商品的分类ID
       state.searchKeyword = $('search-input') ? $('search-input').value : '';
       state.searchScrollTop = overlay.scrollTop;
-      // 计算商品在分类列表中的索引（数据驱动，不依赖DOM）
-      const catProducts = GOODS_DATA.filter(x => x.catId === g.catId);
-      state.targetIndex = catProducts.findIndex(x => String(x.id) === String(g.id));
-      sessionStorage.setItem('targetIndex', state.targetIndex);
     } else {
       state.fromSearch = false;
-      state.searchGoodCatId = 0;  // 重置分类ID
-      state.targetIndex = -1;
-      sessionStorage.removeItem('targetIndex');
     }
     
     renderDetail();
@@ -6227,8 +6171,8 @@ function buyNow() {
     _html5Qr = new Html5Qrcode("scan-reader");
 
     const config = {
-      fps: 20,                // 提高扫描频率：15 → 20fps
-      qrbox: { width: 280, height: 280 }, // 增大扫描框：450x280 → 280x280
+      fps: 15,
+      qrbox: { width: 450, height: 280 },
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.EAN_8,
@@ -7216,24 +7160,6 @@ function buyNow() {
     return _availableImgIds.has(String(id));
   }
 
-  // 生成商品图片 HTML（根据 cssClass 决定尺寸样式）
-  function goodsImgHtml(g, cssClass){
-    if(!g) return '<div class="'+cssClass+'">📷</div>';
-    var emoji = g.emoji || '📦';
-    var fallback = "this.style.display='none';this.parentElement.textContent='"+emoji+"'";
-    // 优先使用 imageUrl（R2 图床等）
-    if(g.imageUrl){
-      return '<div class="'+cssClass+'"><img src="'+g.imageUrl+'" alt="'+g.name+'" onerror="'+fallback+'"></div>';
-    }
-    // R2 图床兜底
-    var r2Url = 'https://ecoshop.zongweihai199.workers.dev/' + g.id + '.jpg';
-    // 本地开发环境同时尝试本地路径
-    var localSrc = '/all_categ_images/' + g.id + '.jpg';
-    var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    var imgSrc = isLocal ? localSrc : r2Url;
-    return '<div class="'+cssClass+'"><img src="'+imgSrc+'" alt="'+g.name+'" onerror="'+fallback+'"></div>';
-  }
-
 
   function handleFileDrop(event){
     event.preventDefault();
@@ -7635,8 +7561,7 @@ function checkLoginState(){
       if(obj && obj.exp && Date.now() < obj.exp && obj.user){
         CURRENT_USER = obj.user;
         document.getElementById('login-overlay').classList.add('hidden');
-        _loginReady = true;
-        _tryAppInit();
+        App.init();
         return;
       } else {
         localStorage.removeItem(SESSION_KEY); // 已过期
@@ -7702,8 +7627,7 @@ function doLogin(){
     var exp = Date.now() + REMEMBER_DAYS * 86400000;
     localStorage.setItem(SESSION_KEY, JSON.stringify({ user: CURRENT_USER, exp: exp }));
     document.getElementById('login-overlay').classList.add('hidden');
-    _loginReady = true;
-    _tryAppInit();
+    App.init();
   });
 }
 
@@ -7712,11 +7636,7 @@ if(!IS_LOCAL_HOST){
   checkLoginState();
 }else{
   document.getElementById('login-overlay').classList.add('hidden');
-  // 本地模式：不在此处调用 App.init()，
-  // 等待上方 fetch('goods.json') 完成后在其回调里统一调用 App.init()，
-  // 确保 GOODS_DATA 已填充再渲染商品页。
-  _loginReady = true;
-  _tryAppInit();
+  App.init();
 }
 </script>
 <!-- SheetJS 用于Excel解析 -->
@@ -7809,4 +7729,4 @@ if(!IS_LOCAL_HOST){
 <!-- 更新时间: 2026-04-07 01:37:25 -->
 <!-- 更新时间: 2026-04-07 02:14:31 -->
 <!-- 更新时间: 2026-04-18 13:24:25 -->
-<!-- 更新时间: 2026-05-08 15:06:59 -->
+<!-- 更新时间: 2026-05-08 15:54:59 -->
