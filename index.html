@@ -981,14 +981,30 @@ function _tryAppInit(){
 }
 
 fetch('goods.json?t=' + Date.now())
-    .then(res => res.json())
+    .then(res => {
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    })
     .then(data => {
         GOODS_DATA = data;
+        // 同步到 localStorage，作为线上版的后备数据源
+        try { localStorage.setItem('yg_goods', JSON.stringify(GOODS_DATA)); } catch(e){}
         _goodsReady = true;
         _tryAppInit();
     })
     .catch(err => {
-        console.error('加载商品数据失败:', err);
+        console.warn('goods.json 加载失败，尝试从 localStorage 恢复:', err.message);
+        // 线上环境可能没有 goods.json 文件，从 localStorage 恢复之前导入的商品数据
+        try {
+            var cached = localStorage.getItem('yg_goods');
+            if(cached){
+                var parsed = JSON.parse(cached);
+                if(Array.isArray(parsed) && parsed.length > 0){
+                    GOODS_DATA = parsed;
+                    console.log('从 localStorage 恢复了 ' + GOODS_DATA.length + ' 件商品');
+                }
+            }
+        } catch(e){}
         _goodsReady = true;
         _tryAppInit();
     });
