@@ -968,18 +968,29 @@ function _ref(){
 
 // 从外部JSON文件加载商品数据
 // 注意：file:// 协议下 fetch 会被浏览器 CORS 拦截，需通过本地服务器 http://localhost 访问
+
+// ── 双锁协调：goods.json 加载完 + 登录验证完，才调用 App.init() ──
+var _goodsReady = false;
+var _loginReady = false;
+var _appInited = false;
+function _tryAppInit(){
+  if(_goodsReady && _loginReady && !_appInited){
+    _appInited = true;
+    if(typeof App !== 'undefined' && App.init) App.init();
+  }
+}
+
 fetch('goods.json?t=' + Date.now())
     .then(res => res.json())
     .then(data => {
         GOODS_DATA = data;
-        console.log('商品数据加载完成，共 ' + GOODS_DATA.length + ' 件');
-        // 数据加载完成后调用 App.init()
-        if(typeof App !== 'undefined' && App.init) App.init();
+        _goodsReady = true;
+        _tryAppInit();
     })
     .catch(err => {
         console.error('加载商品数据失败:', err);
-        // 即使加载失败也尝试初始化
-        if(typeof App !== 'undefined' && App.init) App.init();
+        _goodsReady = true;
+        _tryAppInit();
     });
 
 // =====================================================
@@ -7189,6 +7200,14 @@ function buyNow() {
     return _availableImgIds.has(String(id));
   }
 
+  // 生成商品图片 HTML（根据 cssClass 决定尺寸样式）
+  function goodsImgHtml(g, cssClass){
+    if(!g) return '<div class="'+cssClass+'">📷</div>';
+    var emoji = g.emoji || '📦';
+    // 优先使用本地图片
+    return '<div class="'+cssClass+'"><img src="/all_categ_images/'+g.id+'.jpg" alt="'+g.name+'" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+emoji+'\'"></div>';
+  }
+
 
   function handleFileDrop(event){
     event.preventDefault();
@@ -7590,7 +7609,8 @@ function checkLoginState(){
       if(obj && obj.exp && Date.now() < obj.exp && obj.user){
         CURRENT_USER = obj.user;
         document.getElementById('login-overlay').classList.add('hidden');
-        App.init();
+        _loginReady = true;
+        _tryAppInit();
         return;
       } else {
         localStorage.removeItem(SESSION_KEY); // 已过期
@@ -7656,7 +7676,8 @@ function doLogin(){
     var exp = Date.now() + REMEMBER_DAYS * 86400000;
     localStorage.setItem(SESSION_KEY, JSON.stringify({ user: CURRENT_USER, exp: exp }));
     document.getElementById('login-overlay').classList.add('hidden');
-    App.init();
+    _loginReady = true;
+    _tryAppInit();
   });
 }
 
@@ -7665,7 +7686,11 @@ if(!IS_LOCAL_HOST){
   checkLoginState();
 }else{
   document.getElementById('login-overlay').classList.add('hidden');
-  App.init();
+  // 本地模式：不在此处调用 App.init()，
+  // 等待上方 fetch('goods.json') 完成后在其回调里统一调用 App.init()，
+  // 确保 GOODS_DATA 已填充再渲染商品页。
+  _loginReady = true;
+  _tryAppInit();
 }
 </script>
 <!-- SheetJS 用于Excel解析 -->
@@ -7758,4 +7783,4 @@ if(!IS_LOCAL_HOST){
 <!-- 更新时间: 2026-04-07 01:37:25 -->
 <!-- 更新时间: 2026-04-07 02:14:31 -->
 <!-- 更新时间: 2026-04-18 13:24:25 -->
-<!-- 更新时间: 2026-05-06 23:09:29 -->
+<!-- 更新时间: 2026-05-08 15:06:59 -->
